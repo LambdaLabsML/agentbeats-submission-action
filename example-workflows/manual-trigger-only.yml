@@ -1,0 +1,51 @@
+# Manual trigger only workflow
+# Use this if you want full control over when submissions happen
+# Trigger via GitHub Actions UI: Actions → Submit Solution → Run workflow
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+
+name: Submit Solution (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      role:
+        description: 'Role to submit'
+        required: true
+        default: 'attacker'
+        type: choice
+        options:
+          - attacker
+          - defender
+          - both
+
+jobs:
+  submit-attacker:
+    runs-on: ubuntu-latest
+    if: inputs.role == 'attacker' || inputs.role == 'both'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Attacker
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'attacker'
+          submission_path: './src_attacker'
+
+  submit-defender:
+    runs-on: ubuntu-latest
+    if: inputs.role == 'defender' || inputs.role == 'both'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Defender
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'defender'
+          submission_path: './src_defender'
+

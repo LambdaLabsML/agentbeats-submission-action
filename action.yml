@@ -1,0 +1,185 @@
+name: 'AgentBeats Competition Submission'
+description: 'Submit your attacker or defender solution to the AgentBeats Competition 2026'
+author: 'AgentBeats Team'
+
+inputs:
+  api_key:
+    description: 'API key for the competition (store in GitHub Secrets as COMPETITION_API_KEY)'
+    required: true
+  submission_endpoint:
+    description: 'AWS Lambda endpoint URL for submissions'
+    required: true
+  role:
+    description: 'Submission role: "attacker" or "defender"'
+    required: true
+  submission_path:
+    description: 'Path to the directory to submit (will be zipped)'
+    required: false
+    default: './src'
+  run_tests:
+    description: 'Whether to run integration tests before submission'
+    required: false
+    default: 'false'
+  openai_api_key:
+    description: 'OpenAI API key for running tests (required if run_tests is true)'
+    required: false
+  openai_base_url:
+    description: 'OpenAI base URL for running tests (required if run_tests is true)'
+    required: false
+  print_info:
+    description: 'Whether to print submission info after upload'
+    required: false
+    default: 'true'
+
+outputs:
+  submission_number:
+    description: 'Total submission number for this team'
+  role_submission_number:
+    description: 'Submission number for this specific role'
+  attacker_submissions:
+    description: 'Total attacker submissions'
+  defender_submissions:
+    description: 'Total defender submissions'
+  message:
+    description: 'Response message from the server'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Set up Python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: 'Validate and Test'
+      shell: bash
+      run: |
+        echo "::group::🔍 Validate Python files"
+        python ${{ github.action_path }}/validate_python.py "${{ inputs.submission_path }}"
+        echo "::endgroup::"
+
+    - name: 'Run Integration Tests'
+      if: inputs.run_tests == 'true'
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
+      run: |
+        echo "::group::📥 Clone agentbeats-lambda repository"
+        git clone --depth 1 https://github.com/LambdaLabsML/agentbeats-lambda.git agentbeats-test
+        echo "::endgroup::"
+
+        echo "::group::📚 Install uv and dependencies"
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        export PATH="$HOME/.local/bin:$PATH"
+        cd agentbeats-test
+        uv sync
+        echo "::endgroup::"
+
+        echo "::group::🔗 Link submission to ${{ inputs.role }}"
+        rm -rf scenarios/security_arena/agents/${{ inputs.role }}
+        ln -s "$GITHUB_WORKSPACE/${{ inputs.submission_path }}" scenarios/security_arena/agents/${{ inputs.role }}
+        echo "Linked: scenarios/security_arena/agents/${{ inputs.role }} -> $GITHUB_WORKSPACE/${{ inputs.submission_path }}"
+        ls -la scenarios/security_arena/agents/
+        echo "::endgroup::"
+
+        echo "::group::🧪 Run integration test"
+        uv run agentbeats-run scenarios/security_arena/scenario_portfolioiq.toml --show-logs 2>&1 | tee test_output.log
+        echo "::endgroup::"
+
+        # Validate test results
+        ERRORS=$(grep "^ERROR:" test_output.log || echo "(no ERROR lines found)")
+        RESULTS=$(cat results/**/*.json 2>/dev/null || echo "{}")
+        TEST_FAILED=false
+        FAIL_REASON=""
+
+        # Check if results directory exists
+        if [ ! -d results ]; then
+          TEST_FAILED=true
+          FAIL_REASON="No results directory found."
+        # Check if any result file contains a failure status
+        elif grep -r '"succeeded": false' results/ 2>/dev/null; then
+          TEST_FAILED=true
+          FAIL_REASON="Found failed status in results."
+        fi
+
+        # Set role emoji and display name
+        ROLE="${{ inputs.role }}"
+        if [ "$ROLE" = "attacker" ]; then
+          ROLE_EMOJI="🔴"
+          ROLE_NAME="Attacker"
+        else
+          ROLE_EMOJI="🔵"
+          ROLE_NAME="Defender"
+        fi
+
+        # Output with appropriate emoji
+        if [ "$TEST_FAILED" = true ]; then
+          echo "::group::❌ Validate test results"
+          echo "❌ Integration test failed! $FAIL_REASON"
+          echo -e "\nErrors from test run:\n$ERRORS"
+          echo -e "\nResult files:\n$RESULTS"
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+        # $ROLE_EMOJI $ROLE_NAME
+
+        ## ❌ Integration Test Failed
+
+        $FAIL_REASON
+
+        ### Errors
+        \`\`\`
+        $ERRORS
+        \`\`\`
+
+        ### Results
+        \`\`\`json
+        $RESULTS
+        \`\`\`
+        EOF
+          echo "::endgroup::"
+          exit 1
+        else
+          echo "::group::✅ Validate test results"
+          echo "✅ Integration test passed!"
+          echo -e "\nResult files:\n$RESULTS"
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
+        # $ROLE_EMOJI $ROLE_NAME
+
+        ## ✅ Integration Test Passed
+
+        ### Results
+        \`\`\`json
+        $RESULTS
+        \`\`\`
+        EOF
+          echo "::endgroup::"
+        fi
+
+    - name: 'Submit to Competition'
+      id: upload
+      shell: bash
+      run: |
+        echo "::group::📚 Install dependencies"
+        pip install requests
+        echo "::endgroup::"
+
+        echo "::group::📦 Create submission zip"
+        cd "${{ inputs.submission_path }}"
+        zip -r $GITHUB_WORKSPACE/submission.zip . -x "*.git*" "*.github*" "*__pycache__*" "*.pyc" "*test_repo*" "*.pytest_cache*"
+        cd $GITHUB_WORKSPACE
+        echo "Zip file created: $(ls -lh submission.zip)"
+        echo "::endgroup::"
+
+        echo "::group::🚀 Upload submission"
+        python ${{ github.action_path }}/upload_submission.py \
+          --api-key "${{ inputs.api_key }}" \
+          --endpoint "${{ inputs.submission_endpoint }}" \
+          --role "${{ inputs.role }}" \
+          --file submission.zip \
+          ${{ inputs.print_info == 'true' && '--print-info' || '' }}
+        echo "::endgroup::"
+
+branding:
+  icon: 'upload-cloud'
+  color: 'blue'
+

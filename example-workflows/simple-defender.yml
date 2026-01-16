@@ -1,0 +1,28 @@
+# Simple workflow: Submit defender only (no testing)
+# Use this if you only want to submit a defender solution
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+
+name: Submit Defender
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[submit]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Defender
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'defender'
+          submission_path: './src'
+
