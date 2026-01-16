@@ -1,0 +1,39 @@
+# Submit with integration testing
+# Runs your solution against the agentbeats test scenario before submitting
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+#   - OPENAI_API_KEY: API key for LLM backend
+#   - OPENAI_BASE_URL: Base URL for LLM backend (e.g., https://api.openai.com/v1)
+#
+# The test will:
+#   1. Clone the agentbeats-lambda repository
+#   2. Link your submission as the attacker/defender
+#   3. Run a test scenario
+#   4. Only submit if the test passes
+
+name: Submit with Testing
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[submit]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Attacker (with testing)
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'attacker'
+          submission_path: './src'
+          run_tests: 'true'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+

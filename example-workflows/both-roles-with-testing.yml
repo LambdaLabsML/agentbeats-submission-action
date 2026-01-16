@@ -1,0 +1,50 @@
+# Submit both roles with integration testing
+# Runs each solution against the agentbeats test scenario before submitting
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+#   - OPENAI_API_KEY: API key for LLM backend
+#   - OPENAI_BASE_URL: Base URL for LLM backend (e.g., https://api.openai.com/v1)
+#
+# Expected directory structure:
+#   your-repo/
+#   ├── src_attacker/
+#   │   └── ... your attacker code ...
+#   └── src_defender/
+#       └── ... your defender code ...
+
+name: Submit Both Roles (with Testing)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[submit]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Attacker (with testing)
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'attacker'
+          submission_path: './src_attacker'
+          run_tests: 'true'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+
+      - name: Submit Defender (with testing)
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'defender'
+          submission_path: './src_defender'
+          run_tests: 'true'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+

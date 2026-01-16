@@ -1,0 +1,42 @@
+# Submit both attacker and defender (no testing)
+# Use this if you have separate directories for attacker and defender
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+#
+# Expected directory structure:
+#   your-repo/
+#   ├── src_attacker/
+#   │   └── ... your attacker code ...
+#   └── src_defender/
+#       └── ... your defender code ...
+
+name: Submit Both Roles
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[submit]')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Attacker
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'attacker'
+          submission_path: './src_attacker'
+
+      - name: Submit Defender
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          role: 'defender'
+          submission_path: './src_defender'
+
