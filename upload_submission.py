@@ -77,6 +77,7 @@ def main():
     parser.add_argument('--role', required=True, choices=['attacker', 'defender'],
                         help='Submission role: attacker or defender')
     parser.add_argument('--file', required=True, help='Path to submission zip file')
+    parser.add_argument('--file-list', help='Path to file containing list of uploaded files')
     parser.add_argument('--print-info', action='store_true', default=False,
                         help='Print detailed submission info after upload')
 
@@ -162,6 +163,17 @@ def main():
                 f.write(f"| **Total Size** | {body.get('total_size', '?')} bytes |\n")
                 f.write(f"| **Submission Time** | {body.get('submission_time', '?')} |\n")
                 f.write(f"\n> 💡 {body.get('message', 'Submission successful')}\n")
+
+                # Add file list if provided
+                if args.file_list and Path(args.file_list).exists():
+                    files = Path(args.file_list).read_text().strip().split('\n')
+                    files = [f for f in files if f]  # filter empty lines
+                    if files:
+                        f.write("\n<details>\n<summary>📁 Uploaded Files</summary>\n\n")
+                        f.write("```\n")
+                        for file in files:
+                            f.write(f"{file}\n")
+                        f.write("```\n</details>\n")
 
         sys.exit(0)
         
