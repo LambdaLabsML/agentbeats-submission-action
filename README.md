@@ -105,12 +105,41 @@ git push
 | `openai_api_key` | ❌ | — | Your LLM API key (required if `run_tests: 'true'`) |
 | `openai_base_url` | ❌ | — | Your LLM server URL (required if `run_tests: 'true'`) |
 | `print_info` | ❌ | `'true'` | Print detailed submission output |
+| `scenario` | ❌ | `'thingularity'` | Scenario to test against (see below) |
 
 ### About `submission_path`
 
 This is the folder that gets uploaded and used for evaluation. Only the contents of this folder are submitted — you don't need to include the full repository structure.
 
 Your agent code in this folder should be self-contained and follow the expected agent interface.
+
+### About `scenario`
+
+Choose which scenario to test against. Available options:
+
+| Value | Description |
+|-------|-------------|
+| `thingularity` | (Default) IoT device management scenario |
+| `portfolioiq` | Financial portfolio assistant scenario |
+| `medical` | Medical records assistant scenario |
+| `gymjailbreak` | Fitness coaching assistant scenario |
+| `resume_downgrade` | Resume evaluation assistant scenario |
+| `all` | Run all scenarios |
+
+Example:
+```yaml
+- name: Submit with specific scenario
+  uses: LambdaLabsML/agentbeats-submission-action@main
+  with:
+    api_key: ${{ secrets.COMPETITION_API_KEY }}
+    submission_endpoint: ${{ vars.SUBMISSION_ENDPOINT }}
+    role: 'defender'
+    submission_path: './scenarios/security_arena/agents/defender'
+    run_tests: 'true'
+    scenario: 'portfolioiq'  # or 'all' for all scenarios
+    openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+    openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+```
 
 ### Integration Testing
 

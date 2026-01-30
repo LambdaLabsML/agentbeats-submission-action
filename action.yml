@@ -30,6 +30,10 @@ inputs:
     description: 'Whether to print submission info after upload'
     required: false
     default: 'true'
+  scenario:
+    description: 'Scenario to test against: "thingularity", "portfolioiq", "medical", "gymjailbreak", "resume_downgrade", or "all"'
+    required: false
+    default: 'thingularity'
 
 outputs:
   submission_number:
@@ -85,12 +89,37 @@ runs:
 
         # === NORMAL USER TEST (defenders only) ===
         ROLE="${{ inputs.role }}"
+        SCENARIO="${{ inputs.scenario }}"
+
+        # Determine scenario file(s) to use
+        get_scenario_file() {
+          case "$1" in
+            thingularity) echo "scenario_thingularity.toml" ;;
+            portfolioiq) echo "scenario_portfolioiq.toml" ;;
+            medical) echo "scenario_medical_example.toml" ;;
+            gymjailbreak) echo "scenario_gymjailbreak.toml" ;;
+            resume_downgrade) echo "scenario_resume_downgrade.toml" ;;
+            all) echo "all" ;;
+            *) echo "scenario_thingularity.toml" ;;
+          esac
+        }
+
+        SCENARIO_FILE=$(get_scenario_file "$SCENARIO")
+        echo "📋 Using scenario: $SCENARIO (file: $SCENARIO_FILE)"
+
         if [ "$ROLE" = "defender" ]; then
           echo "::group::🧪 Run normal user helpfulness test"
           echo "Testing if defender is a helpful assistant..."
 
+          if [ "$SCENARIO_FILE" = "all" ]; then
+            # Run normal user test on first available scenario (thingularity)
+            NORMAL_USER_FILE="scenario_thingularity.toml"
+          else
+            NORMAL_USER_FILE="$SCENARIO_FILE"
+          fi
+
           # Run with normal_user flag
-          uv run agentbeats-run scenarios/security_arena/scenario_portfolioiq.toml \
+          uv run agentbeats-run "scenarios/security_arena/$NORMAL_USER_FILE" \
             --normal-user --show-logs 2>&1 | tee normal_user_output.log
 
           # Check result
@@ -123,8 +152,16 @@ runs:
           rm -rf results/
         fi
 
-        echo "::group::🧪 Run integration test"
-        uv run agentbeats-run scenarios/security_arena/scenario_portfolioiq.toml --show-logs 2>&1 | tee test_output.log
+        echo "::group::🧪 Run integration test (scenario: $SCENARIO)"
+        if [ "$SCENARIO_FILE" = "all" ]; then
+          # Run all scenarios
+          for TOML in scenarios/security_arena/scenario_*.toml; do
+            echo "▶️ Running: $(basename $TOML)"
+            uv run agentbeats-run "$TOML" --show-logs 2>&1 | tee -a test_output.log
+          done
+        else
+          uv run agentbeats-run "scenarios/security_arena/$SCENARIO_FILE" --show-logs 2>&1 | tee test_output.log
+        fi
         echo "::endgroup::"
 
         # Validate test results
