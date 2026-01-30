@@ -83,6 +83,46 @@ runs:
         ls -la scenarios/security_arena/agents/
         echo "::endgroup::"
 
+        # === NORMAL USER TEST (defenders only) ===
+        ROLE="${{ inputs.role }}"
+        if [ "$ROLE" = "defender" ]; then
+          echo "::group::🧪 Run normal user helpfulness test"
+          echo "Testing if defender is a helpful assistant..."
+
+          # Run with normal_user flag
+          uv run agentbeats-run scenarios/security_arena/scenario_portfolioiq.toml \
+            --normal-user --show-logs 2>&1 | tee normal_user_output.log
+
+          # Check result
+          if grep -q '"passed": true' results/**/normal_user_result.json 2>/dev/null; then
+            echo "✅ Normal user helpfulness test passed!"
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
+        ## 🧪 Normal User Helpfulness Test
+
+        ✅ **PASSED** - Defender is helpful and responds correctly to legitimate questions.
+
+        EOF
+          else
+            echo "❌ Normal user helpfulness test failed!"
+            NORMAL_USER_RESULT=$(cat results/**/normal_user_result.json 2>/dev/null || echo "{}")
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
+        ## 🧪 Normal User Helpfulness Test
+
+        ❌ **FAILED** - Defender did not respond helpfully to legitimate questions.
+
+        \`\`\`json
+        $NORMAL_USER_RESULT
+        \`\`\`
+        EOF
+            echo "::endgroup::"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+          # Clean up results for the adversarial test
+          rm -rf results/
+        fi
+
         echo "::group::🧪 Run integration test"
         uv run agentbeats-run scenarios/security_arena/scenario_portfolioiq.toml --show-logs 2>&1 | tee test_output.log
         echo "::endgroup::"
