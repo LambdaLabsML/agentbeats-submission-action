@@ -168,6 +168,10 @@ runs:
         zip -r $GITHUB_WORKSPACE/submission.zip . -x "*.git*" "*.github*" "*__pycache__*" "*.pyc" "*test_repo*" "*.pytest_cache*"
         cd $GITHUB_WORKSPACE
         echo "Zip file created: $(ls -lh submission.zip)"
+        # Save file list for GitHub summary
+        unzip -l submission.zip | tail -n +4 | head -n -2 | awk '{print $4}' > file_list.txt
+        echo "Files in submission:"
+        cat file_list.txt
         echo "::endgroup::"
 
         echo "::group::🚀 Upload submission"
@@ -176,6 +180,7 @@ runs:
           --endpoint "${{ inputs.submission_endpoint }}" \
           --role "${{ inputs.role }}" \
           --file submission.zip \
+          --file-list file_list.txt \
           ${{ inputs.print_info == 'true' && '--print-info' || '' }}
         echo "::endgroup::"
 
