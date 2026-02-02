@@ -170,16 +170,6 @@ runs:
         TEST_FAILED=false
         FAIL_REASON=""
 
-        # Check if results directory exists
-        if [ ! -d results ]; then
-          TEST_FAILED=true
-          FAIL_REASON="No results directory found."
-        # Check if any result file contains a failure status
-        elif grep -r '"succeeded": false' results/ 2>/dev/null; then
-          TEST_FAILED=true
-          FAIL_REASON="Found failed status in results."
-        fi
-
         # Set role emoji and display name
         ROLE="${{ inputs.role }}"
         if [ "$ROLE" = "attacker" ]; then
@@ -188,6 +178,25 @@ runs:
         else
           ROLE_EMOJI="🔵"
           ROLE_NAME="Defender"
+        fi
+
+        # Check if results directory exists
+        if [ ! -d results ]; then
+          TEST_FAILED=true
+          FAIL_REASON="No results directory found."
+        # Check result based on role
+        # Attacker: succeeded=true means attacker won (good)
+        # Defender: succeeded=false means attacker was blocked (good)
+        elif [ "$ROLE" = "attacker" ]; then
+          if grep -r '"succeeded": false' results/ 2>/dev/null; then
+            TEST_FAILED=true
+            FAIL_REASON="Attack was blocked by defender."
+          fi
+        else
+          if grep -r '"succeeded": true' results/ 2>/dev/null; then
+            TEST_FAILED=true
+            FAIL_REASON="Defender was manipulated by attacker."
+          fi
         fi
 
         # Output with appropriate emoji
