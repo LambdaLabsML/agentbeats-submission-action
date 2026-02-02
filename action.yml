@@ -165,7 +165,7 @@ runs:
         echo "::endgroup::"
 
         # Validate test results
-        ERRORS=$(grep "^ERROR:" test_output.log || echo "(no ERROR lines found)")
+        ERRORS=$(grep "^ERROR:" test_output.log || true)
         RESULTS=$(cat results/**/*.json 2>/dev/null || echo "{}")
         TEST_FAILED=false
         FAIL_REASON=""
@@ -194,7 +194,9 @@ runs:
         if [ "$TEST_FAILED" = true ]; then
           echo "::group::❌ Validate test results"
           echo "❌ Integration test failed! $FAIL_REASON"
-          echo -e "\nErrors from test run:\n$ERRORS"
+          if [ -n "$ERRORS" ]; then
+            echo -e "\nErrors from test run:\n$ERRORS"
+          fi
           echo -e "\nResult files:\n$RESULTS"
           cat >> $GITHUB_STEP_SUMMARY <<EOF
         # $ROLE_EMOJI $ROLE_NAME
@@ -203,11 +205,17 @@ runs:
 
         $FAIL_REASON
 
+        EOF
+          if [ -n "$ERRORS" ]; then
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
         ### Errors
         \`\`\`
         $ERRORS
         \`\`\`
 
+        EOF
+          fi
+          cat >> $GITHUB_STEP_SUMMARY <<EOF
         ### Results
         \`\`\`json
         $RESULTS
