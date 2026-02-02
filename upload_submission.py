@@ -61,6 +61,7 @@ def upload_submission(api_key: str, endpoint: str, role: str, file_path: Path) -
     except requests.exceptions.RequestException as e:
         print(f"❌ Upload failed: {e}")
         server_error = None
+        endpoint_hint = False
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_detail = e.response.json()
@@ -68,12 +69,19 @@ def upload_submission(api_key: str, endpoint: str, role: str, file_path: Path) -
                 # Extract error message for cleaner display
                 server_error = error_detail.get('error')
             except:
+                # Response exists but isn't valid JSON - likely wrong endpoint
                 print(f"   Server response: {e.response.text}")
                 server_error = e.response.text
+                endpoint_hint = True
+        else:
+            # No response at all - connection failed, likely wrong endpoint
+            endpoint_hint = True
         # Raise with server error message if available
         if server_error:
+            if endpoint_hint:
+                server_error += "\n\nPlease check the submission_endpoint is correct."
             raise Exception(server_error) from e
-        raise
+        raise Exception(f"{e}\n\nPlease check the submission_endpoint is correct.") from e
 
 
 def main():
