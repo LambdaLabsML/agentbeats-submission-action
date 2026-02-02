@@ -55,17 +55,24 @@ def upload_submission(api_key: str, endpoint: str, role: str, file_path: Path) -
             headers={'Content-Type': 'application/json'},
             timeout=30
         )
-        
+
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"❌ Upload failed: {e}")
+        server_error = None
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_detail = e.response.json()
                 print(f"   Server response: {json.dumps(error_detail, indent=2)}")
+                # Extract error message for cleaner display
+                server_error = error_detail.get('error')
             except:
                 print(f"   Server response: {e.response.text}")
+                server_error = e.response.text
+        # Raise with server error message if available
+        if server_error:
+            raise Exception(server_error) from e
         raise
 
 
