@@ -18,6 +18,14 @@ import requests
 from pathlib import Path
 
 
+class SubmissionError(Exception):
+    """Custom exception for submission errors with title and details."""
+    def __init__(self, title: str, details: str = None):
+        self.title = title
+        self.details = details
+        super().__init__(title)
+
+
 def upload_submission(api_key: str, endpoint: str, role: str, file_path: Path) -> dict:
     """
     Upload submission to the Lambda endpoint.
@@ -60,28 +68,28 @@ def upload_submission(api_key: str, endpoint: str, role: str, file_path: Path) -
         return response.json()
     except requests.exceptions.RequestException as e:
         print(f"❌ Upload failed: {e}")
-        server_error = None
-        endpoint_hint = False
         if hasattr(e, 'response') and e.response is not None:
             try:
                 error_detail = e.response.json()
                 print(f"   Server response: {json.dumps(error_detail, indent=2)}")
-                # Extract error message for cleaner display
-                server_error = error_detail.get('error')
+                # Valid JSON response with error message from server
+                server_error = error_detail.get('error', str(e))
+                raise SubmissionError(server_error, str(e))
+            except SubmissionError:
+                raise
             except:
                 # Response exists but isn't valid JSON - likely wrong endpoint
                 print(f"   Server response: {e.response.text}")
-                server_error = e.response.text
-                endpoint_hint = True
+                raise SubmissionError(
+                    "API endpoint not found.",
+                    f"{e}\n\nPlease check the submission_endpoint is correct."
+                )
         else:
             # No response at all - connection failed, likely wrong endpoint
-            endpoint_hint = True
-        # Raise with server error message if available
-        if server_error:
-            if endpoint_hint:
-                server_error += "\n\nPlease check the submission_endpoint is correct."
-            raise Exception(server_error) from e
-        raise Exception(f"{e}\n\nPlease check the submission_endpoint is correct.") from e
+            raise SubmissionError(
+                "API endpoint not found.",
+                f"{e}\n\nPlease check the submission_endpoint is correct."
+            )
 
 
 def main():
@@ -200,19 +208,22 @@ def main():
         print()
         print(f"  Error: {str(e)}")
         print()
-        
+
         # Set GitHub Actions outputs
         if os.getenv('GITHUB_OUTPUT'):
             with open(os.getenv('GITHUB_OUTPUT'), 'a') as f:
-                f.write(f"status=failure\n")
+                f.write("status=failure\n")
                 f.write(f"message=Submission failed: {str(e)}\n")
 
         # Write GitHub Actions Job Summary for failure
         if os.getenv('GITHUB_STEP_SUMMARY'):
             with open(os.getenv('GITHUB_STEP_SUMMARY'), 'a') as f:
                 f.write("## ❌ Submission Failed\n\n")
-                f.write(f"**Error:** {str(e)}\n\n")
-                f.write("Please check the logs above for more details.\n")
+                if isinstance(e, SubmissionError) and e.details:
+                    f.write(f"**Error:** {e.title}\n\n")
+                    f.write(f"```\n{e.details}\n```\n")
+                else:
+                    f.write(f"**Error:** {str(e)}\n")
 
         sys.exit(1)
 
