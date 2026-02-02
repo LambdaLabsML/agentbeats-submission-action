@@ -101,6 +101,7 @@ def main():
                         help='Submission role: attacker or defender')
     parser.add_argument('--file', required=True, help='Path to submission zip file')
     parser.add_argument('--file-list', help='Path to file containing list of uploaded files')
+    parser.add_argument('--submission-path', help='Original submission path (for display)')
     parser.add_argument('--print-info', action='store_true', default=False,
                         help='Print detailed submission info after upload')
 
@@ -192,10 +193,13 @@ def main():
                     files = Path(args.file_list).read_text().strip().split('\n')
                     files = [f for f in files if f]  # filter empty lines
                     if files:
-                        f.write("\n<details>\n<summary>📁 Uploaded Files</summary>\n\n")
+                        # Show submission path prefix if provided
+                        path_prefix = args.submission_path or ''
+                        path_prefix = path_prefix.rstrip('/')
+                        f.write(f"\n<details>\n<summary>📁 Uploaded Files ({path_prefix}/)</summary>\n\n")
                         f.write("```\n")
                         for file in files:
-                            f.write(f"{file}\n")
+                            f.write(f"{path_prefix}/{file}\n")
                         f.write("```\n</details>\n")
 
         sys.exit(0)

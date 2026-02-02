@@ -275,6 +275,7 @@ runs:
           --role "${{ inputs.role }}" \
           --file submission.zip \
           --file-list file_list.txt \
+          --submission-path "${{ inputs.submission_path }}" \
           ${{ inputs.print_info == 'true' && '--print-info' || '' }}
         echo "::endgroup::"
 
