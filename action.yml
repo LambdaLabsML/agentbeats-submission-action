@@ -33,7 +33,7 @@ inputs:
   scenario:
     description: 'Scenario to test against: "thingularity", "portfolioiq", "medical", "gymjailbreak", "resume_downgrade", or "all"'
     required: false
-    default: 'thingularity'
+    default: 'resume_downgrade'
 
 outputs:
   submission_number:
