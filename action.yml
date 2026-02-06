@@ -70,6 +70,7 @@ runs:
         OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
       run: |
         echo "::group::📥 Clone agentbeats-lambda repository"
+        rm -rf agentbeats-test
         git clone --depth 1 https://github.com/LambdaLabsML/agentbeats-lambda.git agentbeats-test
         echo "::endgroup::"
 
