@@ -62,7 +62,7 @@ jobs:
         uses: LambdaLabsML/agentbeats-submission-action@main
         with:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
-          submission_endpoint: ${{ vars.SUBMISSION_ENDPOINT }}
+          submission_endpoint: ${{ secrets.SUBMISSION_ENDPOINT }}
           role: 'attacker'
           submission_path: './scenarios/security_arena/agents/attacker'
 
@@ -77,7 +77,7 @@ jobs:
         uses: LambdaLabsML/agentbeats-submission-action@main
         with:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
-          submission_endpoint: ${{ vars.SUBMISSION_ENDPOINT }}
+          submission_endpoint: ${{ secrets.SUBMISSION_ENDPOINT }}
           role: 'defender'
           submission_path: './scenarios/security_arena/agents/defender'
 ```
@@ -132,7 +132,7 @@ Example:
   uses: LambdaLabsML/agentbeats-submission-action@main
   with:
     api_key: ${{ secrets.COMPETITION_API_KEY }}
-    submission_endpoint: ${{ vars.SUBMISSION_ENDPOINT }}
+    submission_endpoint: ${{ secrets.SUBMISSION_ENDPOINT }}
     role: 'defender'
     submission_path: './scenarios/security_arena/agents/defender'
     run_tests: 'true'
@@ -155,7 +155,7 @@ This requires an LLM backend. Add these secrets pointing to your own server (e.g
   uses: LambdaLabsML/agentbeats-submission-action@main
   with:
     api_key: ${{ secrets.COMPETITION_API_KEY }}
-    submission_endpoint: ${{ vars.SUBMISSION_ENDPOINT }}
+    submission_endpoint: ${{ secrets.SUBMISSION_ENDPOINT }}
     role: 'attacker'
     submission_path: './scenarios/security_arena/agents/attacker'
     run_tests: 'true'
