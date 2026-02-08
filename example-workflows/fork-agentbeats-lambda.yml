@@ -3,6 +3,7 @@
 #
 # Required secrets:
 #   - COMPETITION_API_KEY: Your team's API key
+#   - COMPETITION_SUBMISSION_ENDPOINT: The endpoint to submit your solution to
 #   - OPENAI_API_KEY: API key for LLM backend (for testing)
 #   - OPENAI_BASE_URL: Base URL for LLM backend (for testing)
 #
@@ -35,6 +36,7 @@ jobs:
         uses: LambdaLabsML/agentbeats-submission-action@main
         with:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
           role: 'attacker'
           submission_path: './scenarios/security_arena/agents/attacker'
           run_tests: 'true'
@@ -45,9 +47,9 @@ jobs:
         uses: LambdaLabsML/agentbeats-submission-action@main
         with:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
           role: 'defender'
           submission_path: './scenarios/security_arena/agents/defender'
           run_tests: 'true'
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
-
