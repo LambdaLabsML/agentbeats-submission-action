@@ -260,7 +260,12 @@ runs:
 
         echo "::group::📦 Create submission zip"
         cd "${{ inputs.submission_path }}"
+
+        # Create GIT_INFO.json with git metadata
+        python ${{ github.action_path }}/create_git_info.py
+
         zip -r $GITHUB_WORKSPACE/submission.zip . -x "*.git*" "*.github*" "*__pycache__*" "*.pyc" "*test_repo*" "*.pytest_cache*"
+        rm -f GIT_INFO.json  # Clean up after zipping
         cd $GITHUB_WORKSPACE
         echo "Zip file created: $(ls -lh submission.zip)"
         # Save file list for GitHub summary
