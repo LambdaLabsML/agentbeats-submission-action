@@ -1,6 +1,11 @@
 # Submit both attacker and defender (no testing)
 # Use this if you have separate directories for attacker and defender
 #
+# Trigger options:
+#   [submit]          → submits both attacker and defender
+#   [submit-attacker] → submits attacker only
+#   [submit-defender] → submits defender only
+#
 # Required secrets:
 #   - COMPETITION_API_KEY: Your team's API key
 #
@@ -19,9 +24,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  submit:
+  submit-attacker:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, '[submit]')
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-attacker]')
 
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +39,15 @@ jobs:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
           role: 'attacker'
           submission_path: './src_attacker'
+
+  submit-defender:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-defender]')
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Submit Defender
         uses: LambdaLabsML/agentbeats-submission-action@main

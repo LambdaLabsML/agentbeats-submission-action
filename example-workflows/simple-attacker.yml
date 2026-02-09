@@ -1,6 +1,8 @@
 # Simple workflow: Submit attacker only (no testing)
 # Use this if you only want to submit an attacker solution
 #
+# Trigger with commit message containing [submit] or [submit-attacker]
+#
 # Required secrets:
 #   - COMPETITION_API_KEY: Your team's API key
 
@@ -14,7 +16,9 @@ on:
 jobs:
   submit:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, '[submit]')
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-attacker]')
 
     steps:
       - uses: actions/checkout@v4

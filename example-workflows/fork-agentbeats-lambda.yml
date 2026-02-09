@@ -1,6 +1,11 @@
 # Workflow for forks of agentbeats-lambda repository
 # Use this if you forked LambdaLabsML/agentbeats-lambda as your starting point
 #
+# Trigger options:
+#   [submit]          → submits both attacker and defender
+#   [submit-attacker] → submits attacker only
+#   [submit-defender] → submits defender only
+#
 # Required secrets:
 #   - COMPETITION_API_KEY: Your team's API key
 #   - COMPETITION_SUBMISSION_ENDPOINT: The endpoint to submit your solution to
@@ -25,9 +30,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  submit:
+  submit-attacker:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, '[submit]')
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-attacker]')
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +49,15 @@ jobs:
           run_tests: 'true'
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
           openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+
+  submit-defender:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-defender]')
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Submit Defender
         uses: LambdaLabsML/agentbeats-submission-action@main
