@@ -17,9 +17,13 @@ inputs:
     required: false
     default: './src'
   run_tests:
-    description: 'Whether to run integration tests before submission'
+    description: |
+      Integration test mode:
+        'off' or 'false': Skip testing
+        'warn' or 'true': Run tests, show warning if failed, but still submit (default)
+        'required' or 'block': Run tests, block submission if failed
     required: false
-    default: 'false'
+    default: 'true'
   openai_api_key:
     description: 'OpenAI API key for running tests (required if run_tests is true)'
     required: false
@@ -63,12 +67,20 @@ runs:
         echo "::endgroup::"
 
     - name: 'Run Integration Tests'
-      if: inputs.run_tests == 'true'
+      if: inputs.run_tests != 'false' && inputs.run_tests != 'off'
       shell: bash
       env:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
+        RUN_TESTS_MODE: ${{ inputs.run_tests }}
       run: |
+        # Determine test mode: 'warn' (default for 'true') or 'required' (for 'block')
+        TEST_MODE="warn"
+        if [ "$RUN_TESTS_MODE" = "required" ] || [ "$RUN_TESTS_MODE" = "block" ]; then
+          TEST_MODE="required"
+        fi
+        echo "📋 Test mode: $TEST_MODE"
+
         echo "::group::📥 Clone agentbeats-lambda repository"
         rm -rf agentbeats-test
         git clone --depth 1 https://github.com/LambdaLabsML/agentbeats-lambda.git agentbeats-test
@@ -135,17 +147,32 @@ runs:
           else
             echo "❌ Normal user helpfulness test failed!"
             NORMAL_USER_RESULT=$(cat results/**/normal_user_result.json 2>/dev/null || echo "{}")
-            cat >> $GITHUB_STEP_SUMMARY <<EOF
+            if [ "$TEST_MODE" = "required" ]; then
+              cat >> $GITHUB_STEP_SUMMARY <<EOF
         ## 🧪 Normal User Helpfulness Test
 
         ❌ **FAILED** - Defender did not respond helpfully to legitimate questions.
+        **Submission blocked** (run_tests: required)
 
         \`\`\`json
         $NORMAL_USER_RESULT
         \`\`\`
         EOF
-            echo "::endgroup::"
-            exit 1
+              echo "::endgroup::"
+              exit 1
+            else
+              echo "::warning::Normal user test failed, but continuing with submission (run_tests: warn)"
+              cat >> $GITHUB_STEP_SUMMARY <<EOF
+        ## 🧪 Normal User Helpfulness Test
+
+        ⚠️ **WARNING: FAILED** - Defender did not respond helpfully to legitimate questions.
+        Submission will proceed anyway (run_tests: warn).
+
+        \`\`\`json
+        $NORMAL_USER_RESULT
+        \`\`\`
+        EOF
+            fi
           fi
           echo "::endgroup::"
 
@@ -208,31 +235,64 @@ runs:
             echo -e "\nErrors from test run:\n$ERRORS"
           fi
           echo -e "\nResult files:\n$RESULTS"
-          cat >> $GITHUB_STEP_SUMMARY <<EOF
+
+          if [ "$TEST_MODE" = "required" ]; then
+            # Block submission
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
         # $ROLE_EMOJI $ROLE_NAME
 
         ## ❌ Integration Test Failed
 
         $FAIL_REASON
+        **Submission blocked** (run_tests: required)
 
         EOF
-          if [ -n "$ERRORS" ]; then
-            cat >> $GITHUB_STEP_SUMMARY <<EOF
+            if [ -n "$ERRORS" ]; then
+              cat >> $GITHUB_STEP_SUMMARY <<EOF
         ### Errors
         \`\`\`
         $ERRORS
         \`\`\`
 
         EOF
-          fi
-          cat >> $GITHUB_STEP_SUMMARY <<EOF
+            fi
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
         ### Results
         \`\`\`json
         $RESULTS
         \`\`\`
         EOF
-          echo "::endgroup::"
-          exit 1
+            echo "::endgroup::"
+            exit 1
+          else
+            # Warn but continue
+            echo "::warning::Integration test failed, but continuing with submission (run_tests: warn)"
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
+        # $ROLE_EMOJI $ROLE_NAME
+
+        ## ⚠️ Integration Test Failed (Warning)
+
+        $FAIL_REASON
+        Submission will proceed anyway (run_tests: warn).
+
+        EOF
+            if [ -n "$ERRORS" ]; then
+              cat >> $GITHUB_STEP_SUMMARY <<EOF
+        ### Errors
+        \`\`\`
+        $ERRORS
+        \`\`\`
+
+        EOF
+            fi
+            cat >> $GITHUB_STEP_SUMMARY <<EOF
+        ### Results
+        \`\`\`json
+        $RESULTS
+        \`\`\`
+        EOF
+            echo "::endgroup::"
+          fi
         else
           echo "::group::✅ Validate test results"
           echo "✅ Integration test passed!"

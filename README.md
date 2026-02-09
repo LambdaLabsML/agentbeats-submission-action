@@ -101,11 +101,23 @@ git push
 | `role` | ✅ | — | `'attacker'` or `'defender'` |
 | `submission_endpoint` | ✅ | — | Competition endpoint URL |
 | `submission_path` | ❌ | `'./src'` | Path to your agent code (see below) |
-| `run_tests` | ❌ | `'false'` | Run integration test before submission |
-| `openai_api_key` | ❌ | — | Your LLM API key (required if `run_tests: 'true'`) |
-| `openai_base_url` | ❌ | — | Your LLM server URL (required if `run_tests: 'true'`) |
+| `run_tests` | ❌ | `'true'` | Integration test mode (see below) |
+| `openai_api_key` | ❌ | — | Your LLM API key (required unless `run_tests: 'off'`) |
+| `openai_base_url` | ❌ | — | Your LLM server URL (required unless `run_tests: 'off'`) |
 | `print_info` | ❌ | `'true'` | Print detailed submission output |
 | `scenario` | ❌ | `'thingularity'` | Scenario to test against (see below) |
+
+### About `run_tests`
+
+Controls whether and how integration tests are run before submission:
+
+| Value | Description |
+|-------|-------------|
+| `'off'` or `'false'` | Skip testing entirely |
+| `'warn'` or `'true'` | **(Default)** Run tests; if they fail, show a warning but still submit |
+| `'required'` or `'block'` | Run tests; if they fail, block the submission |
+
+**Note:** The default changed from `'false'` to `'true'` (warn mode). This helps catch issues early while still allowing submissions when tests fail unexpectedly.
 
 ### About `submission_path`
 
@@ -143,7 +155,7 @@ Example:
 
 ### Integration Testing
 
-Set `run_tests: 'true'` to test your agent before submission. The action will only submit if the test passes.
+By default (`run_tests: 'true'`), tests run before submission. If tests fail, a warning is shown but submission continues. Use `run_tests: 'required'` to block submissions when tests fail, or `run_tests: 'off'` to skip testing.
 
 This requires an LLM backend. Add these secrets pointing to your own server (e.g., a Lambda Labs instance running vLLM):
 
@@ -151,14 +163,14 @@ This requires an LLM backend. Add these secrets pointing to your own server (e.g
 - `OPENAI_BASE_URL`: Your server URL (e.g., `http://your-server-ip:8000/v1`)
 
 ```yaml
-- name: Submit Attacker (with testing)
+- name: Submit Attacker (with required testing)
   uses: LambdaLabsML/agentbeats-submission-action@main
   with:
     api_key: ${{ secrets.COMPETITION_API_KEY }}
     submission_endpoint: ${{ secrets.SUBMISSION_ENDPOINT }}
     role: 'attacker'
     submission_path: './scenarios/security_arena/agents/attacker'
-    run_tests: 'true'
+    run_tests: 'required'  # block submission if tests fail
     openai_api_key: ${{ secrets.OPENAI_API_KEY }}
     openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
 ```
@@ -193,6 +205,8 @@ on:
 | [both-roles-with-testing.yml](example-workflows/both-roles-with-testing.yml) | Both roles with testing |
 | [fork-agentbeats-lambda.yml](example-workflows/fork-agentbeats-lambda.yml) | For agentbeats-lambda structure |
 | [manual-trigger-only.yml](example-workflows/manual-trigger-only.yml) | Manual trigger with role selection |
+
+All workflows (except manual-trigger-only) support selective triggers: `[submit]`, `[submit-attacker]`, `[submit-defender]`.
 
 ---
 
