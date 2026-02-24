@@ -1,0 +1,120 @@
+# Parallel Test + Submit workflow for agentbeats-lambda forks
+# Tests both roles in parallel, then submits both in parallel
+# Submission is blocked if tests fail (even in warn mode)
+#
+# This workflow provides faster feedback by running tests and submissions
+# in parallel, while still ensuring only tested code gets submitted.
+#
+# Trigger options:
+#   [submit]          → tests and submits both attacker and defender
+#   [submit-attacker] → tests and submits attacker only
+#   [submit-defender] → tests and submits defender only
+#
+# Required secrets:
+#   - COMPETITION_API_KEY: Your team's API key
+#   - COMPETITION_SUBMISSION_ENDPOINT: The endpoint to submit your solution to
+#   - OPENAI_API_KEY: API key for LLM backend (for testing)
+#   - OPENAI_BASE_URL: Base URL for LLM backend (for testing)
+#
+# Expected directory structure (from agentbeats-lambda fork):
+#   your-fork/
+#   └── scenarios/
+#       └── security_arena/
+#           └── agents/
+#               ├── attacker/
+#               │   └── ... your attacker code ...
+#               └── defender/
+#                   └── ... your defender code ...
+
+name: Submit from Fork (Parallel Test + Submit)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ============ TEST PHASE (parallel) ============
+  test-attacker:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-attacker]')
+    outputs:
+      test_passed: ${{ steps.test.outputs.test_passed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test Attacker
+        id: test
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
+          role: 'attacker'
+          submission_path: './scenarios/security_arena/agents/attacker'
+          run_tests: 'warn'
+          test_only: 'true'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+
+  test-defender:
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, '[submit]') ||
+      contains(github.event.head_commit.message, '[submit-defender]')
+    outputs:
+      test_passed: ${{ steps.test.outputs.test_passed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test Defender
+        id: test
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
+          role: 'defender'
+          submission_path: './scenarios/security_arena/agents/defender'
+          run_tests: 'warn'
+          test_only: 'true'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
+
+  # ============ SUBMIT PHASE (parallel, conditional) ============
+  submit-attacker:
+    runs-on: ubuntu-latest
+    needs: test-attacker
+    if: needs.test-attacker.outputs.test_passed == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Attacker
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
+          role: 'attacker'
+          submission_path: './scenarios/security_arena/agents/attacker'
+          run_tests: 'off'
+
+  submit-defender:
+    runs-on: ubuntu-latest
+    needs: test-defender
+    if: needs.test-defender.outputs.test_passed == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Submit Defender
+        uses: LambdaLabsML/agentbeats-submission-action@main
+        with:
+          api_key: ${{ secrets.COMPETITION_API_KEY }}
+          submission_endpoint: ${{ secrets.COMPETITION_SUBMISSION_ENDPOINT }}
+          role: 'defender'
+          submission_path: './scenarios/security_arena/agents/defender'
+          run_tests: 'off'
+

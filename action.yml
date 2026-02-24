@@ -38,6 +38,10 @@ inputs:
     description: 'Scenario to test against: "thingularity", "portfolioiq", "medical", "gymjailbreak", "resume_downgrade", or "all"'
     required: false
     default: 'resume_downgrade'
+  test_only:
+    description: 'If true, only run tests without submitting (useful for parallel test→submit workflows)'
+    required: false
+    default: 'false'
 
 outputs:
   submission_number:
@@ -50,6 +54,9 @@ outputs:
     description: 'Total defender submissions'
   message:
     description: 'Response message from the server'
+  test_passed:
+    description: 'Whether integration tests passed (true/false/skipped)'
+    value: ${{ steps.run_tests.outputs.test_passed || steps.run_tests_actual.outputs.test_passed }}
 
 runs:
   using: 'composite'
@@ -66,13 +73,21 @@ runs:
         python ${{ github.action_path }}/validate_python.py "${{ inputs.submission_path }}"
         echo "::endgroup::"
 
+    - name: 'Set test_passed to skipped (default)'
+      id: run_tests
+      if: inputs.run_tests == 'false' || inputs.run_tests == 'off'
+      shell: bash
+      run: echo "test_passed=skipped" >> $GITHUB_OUTPUT
+
     - name: 'Run Integration Tests'
+      id: run_tests_actual
       if: inputs.run_tests != 'false' && inputs.run_tests != 'off'
       shell: bash
       env:
         OPENAI_API_KEY: ${{ inputs.openai_api_key }}
         OPENAI_BASE_URL: ${{ inputs.openai_base_url }}
         RUN_TESTS_MODE: ${{ inputs.run_tests }}
+        GITHUB_OUTPUT_FILE: ${{ github.output }}
       run: |
         # Determine test mode: 'warn' (default for 'true') or 'required' (for 'block')
         TEST_MODE="warn"
@@ -80,6 +95,9 @@ runs:
           TEST_MODE="required"
         fi
         echo "📋 Test mode: $TEST_MODE"
+
+        # Track test result
+        TEST_PASSED="true"
 
         echo "::group::📥 Clone agentbeats-lambda repository"
         rm -rf agentbeats-test
@@ -146,6 +164,7 @@ runs:
         EOF
           else
             echo "❌ Normal user helpfulness test failed!"
+            TEST_PASSED="false"
             NORMAL_USER_RESULT=$(cat results/**/normal_user_result.json 2>/dev/null || echo "{}")
             if [ "$TEST_MODE" = "required" ]; then
               cat >> $GITHUB_STEP_SUMMARY <<EOF
@@ -159,6 +178,7 @@ runs:
         \`\`\`
         EOF
               echo "::endgroup::"
+              echo "test_passed=false" >> $GITHUB_OUTPUT
               exit 1
             else
               echo "::warning::Normal user test failed, but continuing with submission (run_tests: warn)"
@@ -229,6 +249,7 @@ runs:
 
         # Output with appropriate emoji
         if [ "$TEST_FAILED" = true ]; then
+          TEST_PASSED="false"
           echo "::group::❌ Validate test results"
           echo "❌ Integration test failed! $FAIL_REASON"
           if [ -n "$ERRORS" ]; then
@@ -263,6 +284,7 @@ runs:
         \`\`\`
         EOF
             echo "::endgroup::"
+            echo "test_passed=false" >> $GITHUB_OUTPUT
             exit 1
           else
             # Warn but continue
@@ -310,7 +332,11 @@ runs:
           echo "::endgroup::"
         fi
 
+        # Output test result for parallel workflows
+        echo "test_passed=$TEST_PASSED" >> $GITHUB_OUTPUT
+
     - name: 'Submit to Competition'
+      if: inputs.test_only != 'true'
       id: upload
       shell: bash
       run: |

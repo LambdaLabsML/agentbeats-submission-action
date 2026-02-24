@@ -102,6 +102,7 @@ git push
 | `submission_endpoint` | ✅ | — | Competition endpoint URL |
 | `submission_path` | ❌ | `'./src'` | Path to your agent code (see below) |
 | `run_tests` | ❌ | `'true'` | Integration test mode (see below) |
+| `test_only` | ❌ | `'false'` | If `'true'`, only run tests without submitting (see below) |
 | `openai_api_key` | ❌ | — | Your LLM API key (required unless `run_tests: 'off'`) |
 | `openai_base_url` | ❌ | — | Your LLM server URL (required unless `run_tests: 'off'`) |
 | `print_info` | ❌ | `'true'` | Print detailed submission output |
@@ -118,6 +119,16 @@ Controls whether and how integration tests are run before submission:
 | `'required'` or `'block'` | Run tests; if they fail, block the submission |
 
 **Note:** The default changed from `'false'` to `'true'` (warn mode). This helps catch issues early while still allowing submissions when tests fail unexpectedly.
+
+### About `test_only` (Parallel Workflows)
+
+Set `test_only: 'true'` to run tests without submitting. This is useful for **parallel test→submit workflows** where you want to:
+1. Run tests for both roles in parallel
+2. Only submit if tests pass
+
+The action outputs `test_passed` (`true`, `false`, or `skipped`) which you can use in subsequent job conditions.
+
+See [fork-agentbeats-lambda-parallel.yml](example-workflows/fork-agentbeats-lambda-parallel.yml) for a complete example.
 
 ### About `submission_path`
 
@@ -204,6 +215,7 @@ on:
 | [with-testing.yml](example-workflows/with-testing.yml) | Single role with testing |
 | [both-roles-with-testing.yml](example-workflows/both-roles-with-testing.yml) | Both roles with testing |
 | [fork-agentbeats-lambda.yml](example-workflows/fork-agentbeats-lambda.yml) | For agentbeats-lambda structure |
+| [fork-agentbeats-lambda-parallel.yml](example-workflows/fork-agentbeats-lambda-parallel.yml) | **Parallel test→submit** (faster, blocks on test failure) |
 | [manual-trigger-only.yml](example-workflows/manual-trigger-only.yml) | Manual trigger with role selection |
 
 All workflows (except manual-trigger-only) support selective triggers: `[submit]`, `[submit-attacker]`, `[submit-defender]`.
