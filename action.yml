@@ -8,7 +8,8 @@ inputs:
     required: true
   submission_endpoint:
     description: 'AWS Lambda endpoint URL for submissions'
-    required: true
+    required: false
+    default: 'https://r6c2lb8bwl.execute-api.us-east-1.amazonaws.com/submit-solution'
   role:
     description: 'Submission role: "attacker" or "defender"'
     required: true
