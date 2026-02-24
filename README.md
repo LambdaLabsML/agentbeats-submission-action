@@ -64,6 +64,9 @@ jobs:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
           role: 'attacker'
           submission_path: './scenarios/security_arena/agents/attacker'
+          run_tests: 'false'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
 
   submit-defender:
     runs-on: ubuntu-latest
@@ -78,6 +81,9 @@ jobs:
           api_key: ${{ secrets.COMPETITION_API_KEY }}
           role: 'defender'
           submission_path: './scenarios/security_arena/agents/defender'
+          run_tests: 'false'
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          openai_base_url: ${{ secrets.OPENAI_BASE_URL }}
 ```
 
 ### 3. Submit
